@@ -37,13 +37,15 @@ Para generar un APK debug:
 
 ## Estructura
 
-- `app/src/main/java/com/ricardo/aria/MainActivity.kt`: pantalla principal, comandos y memoria local.
+- `app/src/main/java/com/ricardo/aria/MainActivity.kt`: pantalla principal en Compose.
+- `app/src/main/java/com/ricardo/aria/AriaCommandProcessor.kt`: motor de comandos de ARIA.
+- `app/src/main/java/com/ricardo/aria/AriaMemoryStore.kt`: persistencia local con `SharedPreferences`.
+- `app/src/test/java/com/ricardo/aria/AriaCommandProcessorTest.kt`: pruebas unitarias del motor de comandos.
 - `app/src/main/java/com/ricardo/aria/ui/theme`: tema visual de Compose.
 - `gradle/libs.versions.toml`: versiones de plugins y dependencias.
 
 ## Proximos pasos sugeridos
 
-- Separar la logica de comandos de la UI.
-- Agregar pruebas para el procesamiento de comandos.
 - Mejorar la interfaz con historial de conversacion.
 - Integrar voz cuando la base este estable.
+- Agregar comandos para conectar ARIA con servicios locales.
