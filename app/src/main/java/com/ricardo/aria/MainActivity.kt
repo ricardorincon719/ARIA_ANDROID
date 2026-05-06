@@ -43,9 +43,11 @@ fun AriaHome(context: Context) {
     var texto by remember { mutableStateOf("") }
 
     val mensajes = remember {
-        mutableStateListOf<ChatMessage>().apply {
-            if (memory.user.isNotBlank()) {
-                add(ChatMessage.SentByAria("Hola ${memory.user}. Lista para ayudarte."))
+        mutableStateListOf<AriaChatMessage>().apply {
+            if (memory.chatMessages.isNotEmpty()) {
+                addAll(memory.chatMessages)
+            } else if (memory.user.isNotBlank()) {
+                add(AriaChatMessage.SentByAria("Hola ${memory.user}. Lista para ayudarte."))
             }
         }
     }
@@ -57,7 +59,7 @@ fun AriaHome(context: Context) {
     var ultimaConexion by remember { mutableStateOf(memory.lastConnection) }
 
     fun guardarMemoria() {
-        ultimaConexion = memoryStore.save(usuario, recordatorios)
+        ultimaConexion = memoryStore.save(usuario, recordatorios, mensajes)
     }
 
     Column(
@@ -96,8 +98,8 @@ fun AriaHome(context: Context) {
                     if (texto.isNotBlank()) {
                         usuario = texto.trim().replaceFirstChar { it.uppercase() }
                         texto = ""
+                        mensajes.add(AriaChatMessage.SentByAria("Bienvenido $usuario. Soy ARIA."))
                         guardarMemoria()
-                        mensajes.add(ChatMessage.SentByAria("Bienvenido $usuario. Soy ARIA."))
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -145,7 +147,7 @@ fun AriaHome(context: Context) {
             onClick = {
                 if (texto.isNotBlank()) {
                     val entrada = texto.trim()
-                    mensajes.add(ChatMessage.SentByUser(entrada))
+                    mensajes.add(AriaChatMessage.SentByUser(entrada))
 
                     val respuesta = commandProcessor.process(
                         input = entrada,
@@ -153,7 +155,8 @@ fun AriaHome(context: Context) {
                         reminders = recordatorios,
                         onMemoryChanged = ::guardarMemoria
                     )
-                    mensajes.add(ChatMessage.SentByAria(respuesta))
+                    mensajes.add(AriaChatMessage.SentByAria(respuesta))
+                    guardarMemoria()
                     texto = ""
                 }
             },
@@ -188,21 +191,16 @@ fun AriaHome(context: Context) {
     }
 }
 
-private sealed class ChatMessage(open val text: String) {
-    data class SentByUser(override val text: String) : ChatMessage(text)
-    data class SentByAria(override val text: String) : ChatMessage(text)
-}
-
 @Composable
-private fun ChatBubble(message: ChatMessage) {
+private fun ChatBubble(message: AriaChatMessage) {
     val alignment = when (message) {
-        is ChatMessage.SentByUser -> Alignment.End
-        is ChatMessage.SentByAria -> Alignment.Start
+        is AriaChatMessage.SentByUser -> Alignment.End
+        is AriaChatMessage.SentByAria -> Alignment.Start
     }
 
     val label = when (message) {
-        is ChatMessage.SentByUser -> "Vos"
-        is ChatMessage.SentByAria -> "ARIA"
+        is AriaChatMessage.SentByUser -> "Vos"
+        is AriaChatMessage.SentByAria -> "ARIA"
     }
 
     Column(

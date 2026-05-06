@@ -5,7 +5,7 @@ ARIA Android es un prototipo de asistente personal para Android construido con K
 ## Funciones actuales
 
 - Guarda el nombre del usuario en memoria local.
-- Muestra historial de conversacion durante la sesion.
+- Guarda y recupera historial de conversacion local.
 - Responde comandos basicos: `hola`, `hora`, `fecha`, `presentate` y `ayuda`.
 - Entiende algunas frases naturales, por ejemplo `que recordatorios tengo?`.
 - Permite guardar recordatorios con `recordar comprar pan`.
@@ -40,6 +40,7 @@ Para generar un APK debug:
 ## Estructura
 
 - `app/src/main/java/com/ricardo/aria/MainActivity.kt`: pantalla principal en Compose.
+- `app/src/main/java/com/ricardo/aria/AriaChatMessage.kt`: modelo de mensajes del historial.
 - `app/src/main/java/com/ricardo/aria/AriaCommandRouter.kt`: deteccion simple de intenciones por palabras clave.
 - `app/src/main/java/com/ricardo/aria/AriaIntent.kt`: intenciones que puede ejecutar ARIA.
 - `app/src/main/java/com/ricardo/aria/AriaCommandProcessor.kt`: motor de comandos de ARIA.
@@ -50,6 +51,6 @@ Para generar un APK debug:
 
 ## Proximos pasos sugeridos
 
-- Mejorar la interfaz con historial de conversacion.
 - Integrar voz cuando la base este estable.
 - Agregar comandos para conectar ARIA con servicios locales.
+- Agregar una opcion para limpiar historial desde la app.
