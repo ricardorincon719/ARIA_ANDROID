@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ricardo.aria.ui.theme.AriaTheme
 import org.json.JSONArray
+import org.json.JSONException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -48,10 +49,15 @@ fun AriaHome(context: Context) {
 
     val recordatorios = remember {
         mutableStateListOf<String>().apply {
-            val json = prefs.getString("tareas", "[]")
-            val array = JSONArray(json)
-            for (i in 0 until array.length()) {
-                add(array.getString(i))
+            val json = prefs.getString("tareas", "[]") ?: "[]"
+
+            try {
+                val array = JSONArray(json)
+                for (i in 0 until array.length()) {
+                    add(array.getString(i))
+                }
+            } catch (_: JSONException) {
+                prefs.edit().putString("tareas", "[]").apply()
             }
         }
     }
@@ -101,7 +107,7 @@ fun AriaHome(context: Context) {
             }
 
             entrada.startsWith("recordar") -> {
-                val tarea = entradaOriginal.removePrefix("recordar").trim()
+                val tarea = entradaOriginal.drop(entradaOriginal.indexOf("recordar", ignoreCase = true) + "recordar".length).trim()
 
                 if (tarea.isBlank()) {
                     "¿Qué querés que recuerde?"
@@ -164,6 +170,7 @@ fun AriaHome(context: Context) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .systemBarsPadding()
             .padding(20.dp)
     ) {
 
