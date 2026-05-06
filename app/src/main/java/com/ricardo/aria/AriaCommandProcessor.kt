@@ -8,7 +8,8 @@ import java.util.TimeZone
 class AriaCommandProcessor(
     private val clock: () -> Date = { Date() },
     private val locale: Locale = Locale.getDefault(),
-    private val timeZone: TimeZone = TimeZone.getDefault()
+    private val timeZone: TimeZone = TimeZone.getDefault(),
+    private val router: AriaCommandRouter = AriaCommandRouter(locale)
 ) {
     fun process(
         input: String,
@@ -16,44 +17,40 @@ class AriaCommandProcessor(
         reminders: MutableList<String>,
         onMemoryChanged: () -> Unit
     ): String {
-        val command = input.lowercase(locale).trim()
-
-        return when {
-            command == "hola" -> {
+        return when (val intent = router.route(input)) {
+            AriaIntent.Greeting -> {
                 "¡Hola $user! ¿Cómo puedo ayudarte hoy?"
             }
 
-            command == "hora" -> {
+            AriaIntent.CurrentTime -> {
                 val time = SimpleDateFormat("HH:mm", locale).apply {
                     timeZone = this@AriaCommandProcessor.timeZone
                 }.format(clock())
                 "Son las $time horas."
             }
 
-            command == "fecha" -> {
+            AriaIntent.CurrentDate -> {
                 val date = SimpleDateFormat("dd/MM/yyyy", locale).apply {
                     timeZone = this@AriaCommandProcessor.timeZone
                 }.format(clock())
                 "Hoy es $date."
             }
 
-            command == "presentate" -> {
+            AriaIntent.Introduction -> {
                 "Soy ARIA, tu asistente personal. Tengo ${reminders.size} recordatorio(s) en memoria."
             }
 
-            command.startsWith("recordar") -> {
-                val task = input.drop(input.indexOf("recordar", ignoreCase = true) + RECORDAR.length).trim()
-
-                if (task.isBlank()) {
+            is AriaIntent.AddReminder -> {
+                if (intent.text.isBlank()) {
                     "¿Qué querés que recuerde?"
                 } else {
-                    reminders.add(task)
+                    reminders.add(intent.text)
                     onMemoryChanged()
-                    "He recordado: '$task'. Tenés ${reminders.size} recordatorio(s)."
+                    "He recordado: '${intent.text}'. Tenés ${reminders.size} recordatorio(s)."
                 }
             }
 
-            command == "recordatorios" -> {
+            AriaIntent.ListReminders -> {
                 if (reminders.isEmpty()) {
                     "No tenés recordatorios pendientes."
                 } else {
@@ -61,37 +58,32 @@ class AriaCommandProcessor(
                 }
             }
 
-            command.startsWith("olvidar") -> {
-                val numberText = command.removePrefix("olvidar").trim()
-                val number = numberText.toIntOrNull()
-
-                if (number == null) {
+            is AriaIntent.RemoveReminder -> {
+                if (intent.index == null) {
                     "Decime el número del recordatorio. Ejemplo: olvidar 2"
-                } else if (number < 1 || number > reminders.size) {
+                } else if (intent.index < 1 || intent.index > reminders.size) {
                     "Número inválido. Usá un número del 1 al ${reminders.size}."
                 } else {
-                    val removed = reminders.removeAt(number - 1)
+                    val removed = reminders.removeAt(intent.index - 1)
                     onMemoryChanged()
                     "Eliminado: '$removed'. Te quedan ${reminders.size} recordatorio(s)."
                 }
             }
 
-            command == "ayuda" -> HELP_TEXT
+            AriaIntent.Help -> HELP_TEXT
 
-            command == "salir" -> {
+            AriaIntent.Exit -> {
                 onMemoryChanged()
                 "Memoria guardada. Hasta luego $user."
             }
 
-            else -> {
-                "No entendí '$input'. Escribí 'ayuda' para ver los comandos."
+            is AriaIntent.Unknown -> {
+                "No entendí '${intent.input}'. Escribí 'ayuda' para ver los comandos."
             }
         }
     }
 
     private companion object {
-        const val RECORDAR = "recordar"
-
         val HELP_TEXT = """
             Comandos disponibles:
             hola

@@ -47,6 +47,42 @@ class AriaCommandProcessorTest {
     }
 
     @Test
+    fun naturalReminderQuestionListsExistingReminders() {
+        val response = processor.process(
+            input = "que recordatorios tengo?",
+            user = "Ricardo",
+            reminders = mutableListOf("comprar pan", "llamar taller"),
+            onMemoryChanged = {}
+        )
+
+        assertEquals("Tenés 2 recordatorio(s) guardado(s).", response)
+    }
+
+    @Test
+    fun naturalReminderQuestionHandlesEmptyReminders() {
+        val response = processor.process(
+            input = "que tareas pendientes tengo?",
+            user = "Ricardo",
+            reminders = mutableListOf(),
+            onMemoryChanged = {}
+        )
+
+        assertEquals("No tenés recordatorios pendientes.", response)
+    }
+
+    @Test
+    fun naturalTimeQuestionUsesInjectedClock() {
+        val response = processor.process(
+            input = "que hora es?",
+            user = "Ricardo",
+            reminders = mutableListOf(),
+            onMemoryChanged = {}
+        )
+
+        assertEquals("Son las 00:00 horas.", response)
+    }
+
+    @Test
     fun horaUsesInjectedClock() {
         val response = processor.process(
             input = "hora",
