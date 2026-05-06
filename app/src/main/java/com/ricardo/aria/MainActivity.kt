@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ricardo.aria.ui.theme.AriaTheme
@@ -40,7 +41,14 @@ fun AriaHome(context: Context) {
     var usuario by remember { mutableStateOf(memory.user) }
 
     var texto by remember { mutableStateOf("") }
-    var respuesta by remember { mutableStateOf("") }
+
+    val mensajes = remember {
+        mutableStateListOf<ChatMessage>().apply {
+            if (memory.user.isNotBlank()) {
+                add(ChatMessage.SentByAria("Hola ${memory.user}. Lista para ayudarte."))
+            }
+        }
+    }
 
     val recordatorios = remember {
         mutableStateListOf<String>().apply { addAll(memory.reminders) }
@@ -89,7 +97,7 @@ fun AriaHome(context: Context) {
                         usuario = texto.trim().replaceFirstChar { it.uppercase() }
                         texto = ""
                         guardarMemoria()
-                        respuesta = "Bienvenido $usuario. Soy ARIA."
+                        mensajes.add(ChatMessage.SentByAria("Bienvenido $usuario. Soy ARIA."))
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -112,6 +120,18 @@ fun AriaHome(context: Context) {
 
         Spacer(modifier = Modifier.height(20.dp))
 
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) {
+            itemsIndexed(mensajes) { _, mensaje ->
+                ChatBubble(message = mensaje)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         OutlinedTextField(
             value = texto,
             onValueChange = { texto = it },
@@ -124,12 +144,16 @@ fun AriaHome(context: Context) {
         Button(
             onClick = {
                 if (texto.isNotBlank()) {
-                    respuesta = commandProcessor.process(
-                        input = texto,
+                    val entrada = texto.trim()
+                    mensajes.add(ChatMessage.SentByUser(entrada))
+
+                    val respuesta = commandProcessor.process(
+                        input = entrada,
                         user = usuario,
                         reminders = recordatorios,
                         onMemoryChanged = ::guardarMemoria
                     )
+                    mensajes.add(ChatMessage.SentByAria(respuesta))
                     texto = ""
                 }
             },
@@ -139,19 +163,6 @@ fun AriaHome(context: Context) {
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        if (respuesta.isNotBlank()) {
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = respuesta,
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
 
         Text(
             text = "Tus recordatorios:",
@@ -173,6 +184,45 @@ fun AriaHome(context: Context) {
                     )
                 }
             }
+        }
+    }
+}
+
+private sealed class ChatMessage(open val text: String) {
+    data class SentByUser(override val text: String) : ChatMessage(text)
+    data class SentByAria(override val text: String) : ChatMessage(text)
+}
+
+@Composable
+private fun ChatBubble(message: ChatMessage) {
+    val alignment = when (message) {
+        is ChatMessage.SentByUser -> Alignment.End
+        is ChatMessage.SentByAria -> Alignment.Start
+    }
+
+    val label = when (message) {
+        is ChatMessage.SentByUser -> "Vos"
+        is ChatMessage.SentByAria -> "ARIA"
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        horizontalAlignment = alignment
+    ) {
+        Text(
+            text = label,
+            fontSize = 12.sp
+        )
+
+        Card(
+            modifier = Modifier.fillMaxWidth(0.86f)
+        ) {
+            Text(
+                text = message.text,
+                modifier = Modifier.padding(14.dp)
+            )
         }
     }
 }

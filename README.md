@@ -5,6 +5,7 @@ ARIA Android es un prototipo de asistente personal para Android construido con K
 ## Funciones actuales
 
 - Guarda el nombre del usuario en memoria local.
+- Muestra historial de conversacion durante la sesion.
 - Responde comandos basicos: `hola`, `hora`, `fecha`, `presentate` y `ayuda`.
 - Permite guardar recordatorios con `recordar comprar pan`.
 - Permite listar y borrar recordatorios con `recordatorios` y `olvidar 1`.
