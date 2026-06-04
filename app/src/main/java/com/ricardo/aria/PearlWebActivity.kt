@@ -1,7 +1,10 @@
 package com.ricardo.aria
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.os.Build
 import android.os.Bundle
 import android.view.ViewGroup
 import android.webkit.WebResourceError
@@ -12,6 +15,7 @@ import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
+import androidx.core.app.ActivityCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +51,8 @@ class PearlWebActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestSceneNotificationPermission()
+        PearlScenePromptScheduler.ensureScheduled(applicationContext)
 
         onBackPressedDispatcher.addCallback(
             this,
@@ -77,6 +83,18 @@ class PearlWebActivity : ComponentActivity() {
         pearlWebView?.destroy()
         pearlWebView = null
         super.onDestroy()
+    }
+
+    private fun requestSceneNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return
+        }
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1007)
     }
 }
 
