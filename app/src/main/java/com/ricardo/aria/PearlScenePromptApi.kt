@@ -6,39 +6,45 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object PearlScenePromptApi {
-    private const val DEFAULT_HUB_URL = "http://jarvis-node.local:5006"
+    private val DEFAULT_HUB_URLS = listOf(
+        "http://jarvis-node.local:5006",
+        "http://jarvis.node.local:5006"
+    )
     private const val CONNECT_TIMEOUT_MS = 2_500
     private const val READ_TIMEOUT_MS = 4_000
 
-    fun fetchPendingPrompts(hubUrl: String = DEFAULT_HUB_URL): List<PearlScenePrompt> {
-        val connection = openConnection("$hubUrl/api/v1/scene-prompts/pending", "GET")
-        return try {
-            val response = connection.inputStream.bufferedReader().use { it.readText() }
-            parsePendingPrompts(response)
-        } finally {
-            connection.disconnect()
+    fun fetchPendingPrompts(hubUrls: List<String> = DEFAULT_HUB_URLS): List<PearlScenePrompt> =
+        withHubFallback(hubUrls) { hubUrl ->
+            val connection = openConnection("$hubUrl/api/v1/scene-prompts/pending", "GET")
+            try {
+                val response = connection.inputStream.bufferedReader().use { it.readText() }
+                parsePendingPrompts(response)
+            } finally {
+                connection.disconnect()
+            }
         }
-    }
 
     fun sendDecision(
         promptId: String,
         decision: String,
         idempotencyKey: String,
-        hubUrl: String = DEFAULT_HUB_URL
+        hubUrls: List<String> = DEFAULT_HUB_URLS
     ) {
-        val connection = openConnection(
-            "$hubUrl/api/v1/scene-prompts/${promptId.encodePathSegment()}/decision",
-            "POST"
-        )
-        connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-        connection.doOutput = true
-        try {
-            OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
-                writer.write(decisionPayload(decision, idempotencyKey))
+        withHubFallback(hubUrls) { hubUrl ->
+            val connection = openConnection(
+                "$hubUrl/api/v1/scene-prompts/${promptId.encodePathSegment()}/decision",
+                "POST"
+            )
+            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            connection.doOutput = true
+            try {
+                OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
+                    writer.write(decisionPayload(decision, idempotencyKey))
+                }
+                connection.inputStream.close()
+            } finally {
+                connection.disconnect()
             }
-            connection.inputStream.close()
-        } finally {
-            connection.disconnect()
         }
     }
 
@@ -69,6 +75,18 @@ object PearlScenePromptApi {
             .put("decision", decision)
             .put("idempotency_key", idempotencyKey)
             .toString()
+
+    private fun <T> withHubFallback(hubUrls: List<String>, request: (String) -> T): T {
+        var lastException: Exception? = null
+        hubUrls.forEach { hubUrl ->
+            try {
+                return request(hubUrl)
+            } catch (exception: Exception) {
+                lastException = exception
+            }
+        }
+        throw lastException ?: IllegalStateException("No PEARL Hub URL configured")
+    }
 
     private fun openConnection(url: String, method: String): HttpURLConnection =
         (URL(url).openConnection() as HttpURLConnection).apply {
