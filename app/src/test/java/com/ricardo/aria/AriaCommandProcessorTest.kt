@@ -48,26 +48,41 @@ class AriaCommandProcessorTest {
 
     @Test
     fun naturalReminderQuestionListsExistingReminders() {
-        val response = processor.process(
+        val result = processor.processDetailed(
             input = "que recordatorios tengo?",
             user = "Ricardo",
             reminders = mutableListOf("comprar pan", "llamar taller"),
             onMemoryChanged = {}
         )
 
-        assertEquals("Tenés 2 recordatorio(s) guardado(s).", response)
+        assertEquals("Tenés 2 recordatorio(s) guardado(s).", result.response)
+        assertEquals(AriaUiAction.SHOW_REMINDERS, result.uiAction)
     }
 
     @Test
     fun naturalReminderQuestionHandlesEmptyReminders() {
-        val response = processor.process(
+        val result = processor.processDetailed(
             input = "que tareas pendientes tengo?",
             user = "Ricardo",
             reminders = mutableListOf(),
             onMemoryChanged = {}
         )
 
-        assertEquals("No tenés recordatorios pendientes.", response)
+        assertEquals("No tenés recordatorios pendientes.", result.response)
+        assertEquals(AriaUiAction.SHOW_REMINDERS, result.uiAction)
+    }
+
+    @Test
+    fun goodbyeAliasesRequestAppClose() {
+        val result = processor.processDetailed(
+            input = "chau",
+            user = "Ricardo",
+            reminders = mutableListOf(),
+            onMemoryChanged = {}
+        )
+
+        assertEquals("Memoria guardada. Hasta luego Ricardo.", result.response)
+        assertEquals(AriaUiAction.CLOSE_APP, result.uiAction)
     }
 
     @Test

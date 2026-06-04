@@ -12,3 +12,13 @@ sealed class AriaIntent {
     data object Exit : AriaIntent()
     data class Unknown(val input: String) : AriaIntent()
 }
+
+enum class AriaUiAction {
+    SHOW_REMINDERS,
+    CLOSE_APP
+}
+
+data class AriaCommandResult(
+    val response: String,
+    val uiAction: AriaUiAction? = null
+)

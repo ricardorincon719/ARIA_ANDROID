@@ -17,68 +17,97 @@ class AriaCommandProcessor(
         reminders: MutableList<String>,
         onMemoryChanged: () -> Unit
     ): String {
+        return processDetailed(
+            input = input,
+            user = user,
+            reminders = reminders,
+            onMemoryChanged = onMemoryChanged
+        ).response
+    }
+
+    fun processDetailed(
+        input: String,
+        user: String,
+        reminders: MutableList<String>,
+        onMemoryChanged: () -> Unit
+    ): AriaCommandResult {
         return when (val intent = router.route(input)) {
             AriaIntent.Greeting -> {
-                "¡Hola $user! ¿Cómo puedo ayudarte hoy?"
+                AriaCommandResult("¡Hola $user! ¿Cómo puedo ayudarte hoy?")
             }
 
             AriaIntent.CurrentTime -> {
                 val time = SimpleDateFormat("HH:mm", locale).apply {
                     timeZone = this@AriaCommandProcessor.timeZone
                 }.format(clock())
-                "Son las $time horas."
+                AriaCommandResult("Son las $time horas.")
             }
 
             AriaIntent.CurrentDate -> {
                 val date = SimpleDateFormat("dd/MM/yyyy", locale).apply {
                     timeZone = this@AriaCommandProcessor.timeZone
                 }.format(clock())
-                "Hoy es $date."
+                AriaCommandResult("Hoy es $date.")
             }
 
             AriaIntent.Introduction -> {
-                "Soy ARIA, tu asistente personal. Tengo ${reminders.size} recordatorio(s) en memoria."
+                AriaCommandResult("Soy ARIA, tu asistente personal. Tengo ${reminders.size} recordatorio(s) en memoria.")
             }
 
             is AriaIntent.AddReminder -> {
                 if (intent.text.isBlank()) {
-                    "¿Qué querés que recuerde?"
+                    AriaCommandResult("¿Qué querés que recuerde?")
                 } else {
                     reminders.add(intent.text)
                     onMemoryChanged()
-                    "He recordado: '${intent.text}'. Tenés ${reminders.size} recordatorio(s)."
+                    AriaCommandResult(
+                        response = "He recordado: '${intent.text}'. Tenés ${reminders.size} recordatorio(s).",
+                        uiAction = AriaUiAction.SHOW_REMINDERS
+                    )
                 }
             }
 
             AriaIntent.ListReminders -> {
                 if (reminders.isEmpty()) {
-                    "No tenés recordatorios pendientes."
+                    AriaCommandResult(
+                        response = "No tenés recordatorios pendientes.",
+                        uiAction = AriaUiAction.SHOW_REMINDERS
+                    )
                 } else {
-                    "Tenés ${reminders.size} recordatorio(s) guardado(s)."
+                    AriaCommandResult(
+                        response = "Tenés ${reminders.size} recordatorio(s) guardado(s).",
+                        uiAction = AriaUiAction.SHOW_REMINDERS
+                    )
                 }
             }
 
             is AriaIntent.RemoveReminder -> {
                 if (intent.index == null) {
-                    "Decime el número del recordatorio. Ejemplo: olvidar 2"
+                    AriaCommandResult("Decime el número del recordatorio. Ejemplo: olvidar 2")
                 } else if (intent.index < 1 || intent.index > reminders.size) {
-                    "Número inválido. Usá un número del 1 al ${reminders.size}."
+                    AriaCommandResult("Número inválido. Usá un número del 1 al ${reminders.size}.")
                 } else {
                     val removed = reminders.removeAt(intent.index - 1)
                     onMemoryChanged()
-                    "Eliminado: '$removed'. Te quedan ${reminders.size} recordatorio(s)."
+                    AriaCommandResult(
+                        response = "Eliminado: '$removed'. Te quedan ${reminders.size} recordatorio(s).",
+                        uiAction = AriaUiAction.SHOW_REMINDERS
+                    )
                 }
             }
 
-            AriaIntent.Help -> HELP_TEXT
+            AriaIntent.Help -> AriaCommandResult(HELP_TEXT)
 
             AriaIntent.Exit -> {
                 onMemoryChanged()
-                "Memoria guardada. Hasta luego $user."
+                AriaCommandResult(
+                    response = "Memoria guardada. Hasta luego $user.",
+                    uiAction = AriaUiAction.CLOSE_APP
+                )
             }
 
             is AriaIntent.Unknown -> {
-                "No entendí '${intent.input}'. Escribí 'ayuda' para ver los comandos."
+                AriaCommandResult("No entendí '${intent.input}'. Escribí 'ayuda' para ver los comandos.")
             }
         }
     }
@@ -94,7 +123,7 @@ class AriaCommandProcessor(
             recordatorios
             olvidar 1
             ayuda
-            salir
+            salir / adiós / chau
             """.trimIndent()
     }
 }

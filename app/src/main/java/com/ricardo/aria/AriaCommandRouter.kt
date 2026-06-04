@@ -18,9 +18,19 @@ class AriaCommandRouter(
             normalized == "recordatorios" || asksForReminders(normalized) -> AriaIntent.ListReminders
             normalized.startsWith(OLVIDAR) -> AriaIntent.RemoveReminder(extractAfterKeyword(normalized, OLVIDAR).toIntOrNull())
             normalized == "ayuda" || "que puedo decir" in normalized || "qué puedo decir" in normalized -> AriaIntent.Help
-            normalized == "salir" -> AriaIntent.Exit
+            isExit(normalized) -> AriaIntent.Exit
             else -> AriaIntent.Unknown(original)
         }
+    }
+
+    private fun isExit(text: String): Boolean {
+        return text == "salir" ||
+            text == "adios" ||
+            text == "adiós" ||
+            text == "chau" ||
+            text == "chao" ||
+            text == "hasta luego" ||
+            text == "nos vemos"
     }
 
     private fun asksForReminders(text: String): Boolean {
