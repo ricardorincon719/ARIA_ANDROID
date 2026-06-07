@@ -39,12 +39,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.ricardo.aria.ui.theme.AriaTheme
 
-private const val PEARL_CORE_URL = "http://127.0.0.1:5004/"
 
 class PearlWebActivity : ComponentActivity() {
     private var pearlWebView: WebView? = null
@@ -101,10 +101,15 @@ class PearlWebActivity : ComponentActivity() {
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun PearlWebApp(onWebViewReady: (WebView) -> Unit) {
+    val context = LocalContext.current
+    val coreUrls = remember { PearlCoreEndpoints.urls(context) }
+    var activeCoreIndex by remember { mutableStateOf(0) }
     var isLoading by remember { mutableStateOf(true) }
     var isUnavailable by remember { mutableStateOf(false) }
     var reloadTick by remember { mutableStateOf(0) }
     var appliedReloadTick by remember { mutableStateOf(0) }
+
+    fun currentCoreUrl(): String = coreUrls.getOrElse(activeCoreIndex) { coreUrls.first() }
 
     Box(
         modifier = Modifier
@@ -114,8 +119,8 @@ private fun PearlWebApp(onWebViewReady: (WebView) -> Unit) {
     ) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
-            factory = { context ->
-                WebView(context).apply {
+            factory = { factoryContext ->
+                WebView(factoryContext).apply {
                     layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT
@@ -125,6 +130,7 @@ private fun PearlWebApp(onWebViewReady: (WebView) -> Unit) {
                     settings.cacheMode = WebSettings.LOAD_DEFAULT
                     settings.mediaPlaybackRequiresUserGesture = false
                     settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                    addJavascriptInterface(PearlNativeBridge(factoryContext), "PearlAndroid")
                     webViewClient = object : WebViewClient() {
                         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                             isLoading = true
@@ -132,7 +138,21 @@ private fun PearlWebApp(onWebViewReady: (WebView) -> Unit) {
                         }
 
                         override fun onPageFinished(view: WebView?, url: String?) {
-                            isLoading = false
+                            view?.evaluateJavascript("Boolean(window.PEARL_CONFIG)") { result ->
+                                if (result == "true") {
+                                    isLoading = false
+                                    val origin = PearlCoreEndpoints.originFromUrl(url)
+                                    PearlNativeSessionStore(factoryContext).saveLastCoreUrl(origin)
+                                } else if (activeCoreIndex < coreUrls.lastIndex) {
+                                    activeCoreIndex += 1
+                                    isLoading = true
+                                    isUnavailable = false
+                                    view.loadUrl(currentCoreUrl())
+                                } else {
+                                    isLoading = false
+                                    isUnavailable = true
+                                }
+                            }
                         }
 
                         override fun onReceivedError(
@@ -140,20 +160,29 @@ private fun PearlWebApp(onWebViewReady: (WebView) -> Unit) {
                             request: WebResourceRequest?,
                             error: WebResourceError?
                         ) {
-                            if (request?.isForMainFrame == true) {
-                                isLoading = false
-                                isUnavailable = true
+                            if (request?.isForMainFrame != true) return
+                            if (activeCoreIndex < coreUrls.lastIndex) {
+                                activeCoreIndex += 1
+                                isLoading = true
+                                isUnavailable = false
+                                view?.loadUrl(currentCoreUrl())
+                                return
                             }
+                            isLoading = false
+                            isUnavailable = true
                         }
                     }
                     onWebViewReady(this)
-                    loadUrl(PEARL_CORE_URL)
+                    loadUrl(currentCoreUrl())
                 }
             },
             update = { webView ->
+                val targetUrl = currentCoreUrl()
                 if (reloadTick != appliedReloadTick) {
                     appliedReloadTick = reloadTick
-                    webView.loadUrl(PEARL_CORE_URL)
+                    webView.loadUrl(targetUrl)
+                } else if (webView.url == null) {
+                    webView.loadUrl(targetUrl)
                 }
             }
         )
@@ -172,6 +201,7 @@ private fun PearlWebApp(onWebViewReady: (WebView) -> Unit) {
         if (isUnavailable) {
             PearlUnavailableScreen(
                 onRetry = {
+                    activeCoreIndex = 0
                     isUnavailable = false
                     isLoading = true
                     reloadTick += 1
@@ -180,6 +210,7 @@ private fun PearlWebApp(onWebViewReady: (WebView) -> Unit) {
         }
     }
 }
+
 
 @Composable
 private fun PearlUnavailableScreen(onRetry: () -> Unit) {
@@ -200,7 +231,7 @@ private fun PearlUnavailableScreen(onRetry: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "No pude conectar con el Core en 127.0.0.1:5004.",
+            text = "No pude conectar con PEARL Core.",
             color = Color(0xFFB8C0CC),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center

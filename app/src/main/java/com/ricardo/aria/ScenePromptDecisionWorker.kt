@@ -22,7 +22,7 @@ class ScenePromptDecisionWorker(
 
         return try {
             val idempotencyKey = "android-${promptId}-${decision}-${UUID.randomUUID()}"
-            PearlScenePromptApi.sendDecision(promptId, decision, idempotencyKey)
+            PearlScenePromptApi.sendDecision(applicationContext, promptId, decision, idempotencyKey)
             ScenePromptNotificationManager.cancel(applicationContext, notificationId)
             Result.success()
         } catch (_: Exception) {

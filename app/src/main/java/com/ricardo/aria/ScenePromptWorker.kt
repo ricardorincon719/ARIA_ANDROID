@@ -10,7 +10,7 @@ class ScenePromptWorker(
 ) : Worker(context, params) {
     override fun doWork(): Result {
         return try {
-            val prompts = PearlScenePromptApi.fetchPendingPrompts()
+            val prompts = PearlScenePromptApi.fetchPendingPrompts(applicationContext)
             prompts.take(MAX_NOTIFICATIONS).forEach { prompt ->
                 ScenePromptNotificationManager.showPrompt(applicationContext, prompt)
             }
